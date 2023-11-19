@@ -1,19 +1,16 @@
-from PyQt5.QtWidgets import QApplication, QFileDialog, \
-    QLabel, QPushButton, QVBoxLayout, QWidget, QMessageBox, \
-    QMainWindow, QDesktopWidget, QSizePolicy
-from PyQt5.QtGui import QDropEvent
-from PyQt5.QtGui import QIcon, QDragEnterEvent
-from PyQt5.QtCore import Qt, pyqtSignal, QMimeData
+from PyQt5.QtWidgets import QApplication, QLabel, QPushButton, QVBoxLayout, \
+    QWidget, QDesktopWidget, QSizePolicy, QFileDialog, QMessageBox
+from PyQt5.QtGui import QDropEvent, QIcon, QDragEnterEvent
+from PyQt5.QtCore import Qt, pyqtSignal
 from io import BytesIO
 from pptx import Presentation
 from PIL import Image
+from gtts import gTTS
 import numpy as np
 import pytesseract
 import pyttsx3
 import cv2
 import os
-
-#DEMO1
 
 class DragAndDropLabel(QLabel):
     file_dropped = pyqtSignal(str)
@@ -23,8 +20,8 @@ class DragAndDropLabel(QLabel):
         self.setAlignment(Qt.AlignCenter)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.setText("Arrastra tu presentación aquí")
-        self.setStyleSheet("border: 5px dashed white; color: #ffd166; font-size: 35px;"
-                           " font-weight: bold; padding: 40px; margin-top: 20px; background-color: #118ab2; ")
+        self.setStyleSheet("border: 5px dashed #000814; color: #032B43; font-size: 35px;"
+                           " font-weight: bold; padding: 40px; margin-top: 20px; background-color: #3F88C5; ")
 
         self.setAcceptDrops(True)
 
@@ -37,6 +34,41 @@ class DragAndDropLabel(QLabel):
         file_path = event.mimeData().urls()[0].toLocalFile()
         self.file_dropped.emit(file_path)
 
+class InitialScreen(QWidget):
+    file_dropped = pyqtSignal(str)
+
+    def __init__(self):
+        super().__init__()
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout()
+        pantalla = QDesktopWidget().availableGeometry()
+        self.setWindowTitle("Conversión Texto-Audio")
+        self.setGeometry(100, 100, 1280, 700)
+        self.setWindowIcon(QIcon('esime_original.ico'))
+        self.setStyleSheet("background-color: #669bbc;")
+
+        self.titulo1 = QLabel('Convierte un PowerPoint a MP3', self)
+        self.titulo1.setStyleSheet("color: #000814; font-size: 40px; font-weight: bold;")
+        layout.addWidget(self.titulo1, alignment=Qt.AlignCenter)
+
+        self.drag_and_drop_label = DragAndDropLabel(self)
+        self.drag_and_drop_label.file_dropped.connect(self.file_dropped.emit)
+        layout.addWidget(self.drag_and_drop_label, alignment=Qt.AlignTop)
+        height_percentage = 0.6
+        label_height = int(pantalla.height() * height_percentage)
+        self.drag_and_drop_label.setMinimumHeight(label_height)
+        self.drag_and_drop_label.setMaximumHeight(label_height)
+
+        self.setLayout(layout)
+
+    def handle_file_dropped(self, file_path):
+        if file_path.lower().endswith(('.pptx', '.ppt')):
+            self.file_dropped.emit(file_path)
+        else:
+            QMessageBox.warning(self, "Advertencia", "Formato de archivo no válido. Por favor, selecciona un archivo PowerPoint.")
+
 class PowerPointToAudioConverter(QWidget):
     def __init__(self):
         super().__init__()
@@ -46,37 +78,23 @@ class PowerPointToAudioConverter(QWidget):
     def init_ui(self):
         layout = QVBoxLayout()
 
-        #Configuraciones basicas de la pantalla, titulo de la ventana, icono, color de fondo y geometria de la pantalla.
         pantalla = QDesktopWidget().availableGeometry()
-        self.setWindowTitle("Conversión Texto-Audio")
-        self.setGeometry(100, 100, 1280, 700)
+        self.setWindowTitle("Conversión Texto-Audio - Conversión")
+        self.setGeometry(100, 100, 800, 600)
         self.setWindowIcon(QIcon('esime_original.ico'))
-        self.setStyleSheet("background-color: #073b4c;")
+        self.setStyleSheet("background-color: #4059AD;")
 
-        #Titulo del proyecto con su respectivo estilo
-        self.titulo1 = QLabel('Convierte un PowerPoint a MP3', self)
-        self.titulo1.setStyleSheet("color: #fdf0d5; font-size: 40px; font-weight: bold;")
-        layout.addWidget(self.titulo1, alignment=Qt.AlignCenter)
-
-        #Drag and drop y selección de archivos
-        self.drag_and_drop_label = DragAndDropLabel(self)
-        self.drag_and_drop_label.file_dropped.connect(self.handle_file_dropped)
-        layout.addWidget(self.drag_and_drop_label, alignment=Qt.AlignTop)
-        height_percentage = 0.6
-        label_height = int(pantalla.height() * height_percentage)
-        self.drag_and_drop_label.setMinimumHeight(label_height)
-        self.drag_and_drop_label.setMaximumHeight(label_height)
-
-
-        self.boton_subir = QPushButton("Seleccionar Archivo PowerPoint", self)
-        self.boton_subir.setStyleSheet("background-color: #202324; color: white; font-size: 20px; font-weight: bold; border: 2px solid white;")
-        self.boton_subir.clicked.connect(self.abrir_archivo)
-        layout.addWidget(self.boton_subir, alignment=Qt.AlignTop)
+        self.titulo2 = QLabel('Detalles de tu archivo', self)
+        self.titulo2.setStyleSheet("color: #EFF2F1; font-size: 40px; font-weight: bold;")
+        layout.addWidget(self.titulo2, alignment=Qt.AlignCenter)
 
         self.boton_convertir = QPushButton("Convertir a Audio", self)
-        self.boton_convertir.setStyleSheet("background-color: #202324; color: white; font-size: 20px; font-weight: bold; border: 2px solid white;")
+        self.boton_convertir.setStyleSheet("background-color: #EFF2F1; color: black; font-size: 20px; font-weight: bold; border: 2px solid white;")
         self.boton_convertir.clicked.connect(self.convertir_a_audio)
-        layout.addWidget(self.boton_convertir, alignment=Qt.AlignTop)
+        self.boton_convertir.setFixedSize(200, 50)
+        self.boton_convertir.setMaximumWidth(200)
+        self.boton_convertir.setContentsMargins(10, 10, 10, 10)
+        layout.addWidget(self.boton_convertir, alignment=Qt.AlignCenter)
 
         self.etiqueta_seleccionado = QLabel("", self)
         self.etiqueta_seleccionado.setStyleSheet("color: white; font-size: 15px; font-weight: bold;")
@@ -91,20 +109,25 @@ class PowerPointToAudioConverter(QWidget):
 
         self.setLayout(layout)
 
-    def handle_file_dropped(self, file_path):
+    def obtener_numero_diapositivas(self, file_path):
+        try:
+            presentation = Presentation(file_path)
+            numero_diapositivas = len(presentation.slides)
+            return numero_diapositivas
+        except Exception as e:
+            mensaje = f"Error al obtener el número de diapositivas"
+            return None
+    def show_conversion_screen(self, file_path):
         self.etiqueta_seleccionado.setText("Archivo seleccionado:")
         self.nombre_archivo_label.setText(os.path.basename(file_path))
-        self.nombre_archivo_label.setStyleSheet("color: #2980B9; font-size: 15px; font-weight: bold;")
+        self.nombre_archivo_label.setStyleSheet("color: #EFF2F1; font-size: 30px; font-weight: bold;")
         self.pptx_path = file_path
 
-    def abrir_archivo(self):
-        archivo, _ = QFileDialog.getOpenFileName(self, "Seleccionar Archivo PowerPoint", "", "Archivos PowerPoint (*.pptx)")
-        if archivo:
-            nombre_archivo = os.path.basename(archivo)
-            self.etiqueta_seleccionado.setText("Archivo seleccionado:")
-            self.nombre_archivo_label.setText(nombre_archivo)
-            self.nombre_archivo_label.setStyleSheet("color: #2980B9; font-size: 15px; font-weight: bold;")
-            self.pptx_path = archivo
+        numero_diapositivas = self.obtener_numero_diapositivas(file_path)
+        mensaje = f"Número de diapositivas: {numero_diapositivas}"
+        self.etiqueta_seleccionado.setText(mensaje)
+
+        self.show()
 
     def convertir_a_audio(self):
         if not self.pptx_path:
@@ -161,9 +184,6 @@ class PowerPointToAudioConverter(QWidget):
                 img_data['ocr_text'] = text
 
     def save_text_to_audio(self, text, base_filename):
-        engine = pyttsx3.init()
-        engine.setProperty('rate', 150)
-
         counter = 0
         audio_filename = f"{base_filename}.mp3"
 
@@ -171,8 +191,8 @@ class PowerPointToAudioConverter(QWidget):
             counter += 1
             audio_filename = f"{base_filename}_{counter}.mp3"
 
-        engine.save_to_file(text, audio_filename)
-        engine.runAndWait()
+        tts = gTTS(text=text, lang='es')
+        tts.save(audio_filename)
 
         QMessageBox.information(self, "Éxito", f"La conversión a audio ha terminado. Se ha guardado en el archivo {os.path.basename(audio_filename)}")
 
@@ -193,9 +213,12 @@ class PowerPointToAudioConverter(QWidget):
 
         self.save_text_to_audio(audio_text, base_filename)
 
-
 if __name__ == "__main__":
     app = QApplication([])
-    converter_app = PowerPointToAudioConverter()
-    converter_app.show()
+    main_window = InitialScreen()
+    conversion_screen = PowerPointToAudioConverter()
+
+    main_window.file_dropped.connect(conversion_screen.show_conversion_screen)
+
+    main_window.show()
     app.exec_()
