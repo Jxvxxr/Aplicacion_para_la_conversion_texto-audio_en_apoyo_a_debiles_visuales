@@ -39,11 +39,12 @@ class InitialScreen(QWidget):
         super().__init__()
         self.init_ui()
 
+
     def init_ui(self):
         layout = QVBoxLayout()
         pantalla = QDesktopWidget().availableGeometry()
         self.setWindowTitle("Conversión Texto-Audio")
-        self.setGeometry(100, 100, 1280, 700)
+        self.setGeometry(100, 100, 800, 600)
         self.setWindowIcon(QIcon('esime_original.ico'))
         self.setStyleSheet("background-color: #669bbc;")
 
@@ -59,7 +60,29 @@ class InitialScreen(QWidget):
         self.drag_and_drop_label.setMinimumHeight(label_height)
         self.drag_and_drop_label.setMaximumHeight(label_height)
 
+        #boton
+        self.boton_buscar = QPushButton("Buscar Archivo", self)
+        self.boton_buscar.setStyleSheet("background-color: #EFF2F1; color: black; font-size: 20px; font-weight: bold; border: 2px solid white;")
+        self.boton_buscar.clicked.connect(self.buscar_archivo)
+        self.boton_buscar.setFixedSize(200, 50)
+        self.boton_buscar.setMaximumWidth(200)
+        self.boton_buscar.setContentsMargins(10, 10, 10, 10)
+        layout.addWidget(self.boton_buscar, alignment=Qt.AlignCenter)
+
         self.setLayout(layout)
+
+
+    def buscar_archivo(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        file_dialog = QFileDialog()
+        file_dialog.setNameFilter("Archivos PowerPoint (*.pptx *.ppt)")
+        file_dialog.setWindowTitle("Seleccionar Archivo")
+        file_dialog.setFileMode(QFileDialog.ExistingFile)
+
+        if file_dialog.exec_() == QFileDialog.Accepted:
+            file_path = file_dialog.selectedFiles()[0]
+            self.file_dropped.emit(file_path)
 
     def handle_file_dropped(self, file_path):
         if file_path.lower().endswith(('.pptx', '.ppt')):
